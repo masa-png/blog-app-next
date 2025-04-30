@@ -1,12 +1,12 @@
 "use client";
 
-import { Post } from "@/app/_types";
+import { MicroCmsPost } from "@/app/_types/MicroCmsPost";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export default function Page({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<MicroCmsPost | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   // APIでpost(記事詳細)を取得する処理をuseEffectで実行
@@ -14,10 +14,16 @@ export default function Page({ params }: { params: { id: string } }) {
     const fetcher = async () => {
       setLoading(true);
       const res = await fetch(
-        `https://1hmfpsvto6.execute-api.ap-northeast-1.amazonaws.com/dev/posts/${id}`
+        `https://m10s91bwq0.microcms.io/api/v1/posts/${id}`,
+        {
+          headers: {
+            "X-MICROCMS-API-KEY": process.env
+              .NEXT_PUBLIC_MICROCMS_API_KEY as string,
+          },
+        }
       );
-      const { post } = await res.json();
-      setPost(post);
+      const data = await res.json();
+      setPost(data);
       setLoading(false);
     };
 
@@ -26,10 +32,12 @@ export default function Page({ params }: { params: { id: string } }) {
 
   if (loading) return <p>読み込み中...</p>;
 
+  console.log(post);
+
   if (!loading && !post) return <p>投稿がみつかりませんでした</p>;
 
   // TypeScriptにpostがnullでないことを伝える型アサーション
-  const safePost = post as Post;
+  const safePost = post as MicroCmsPost;
 
   return (
     <div>
@@ -37,10 +45,10 @@ export default function Page({ params }: { params: { id: string } }) {
         <div>
           <div>
             <Image
-              src={safePost.thumbnailUrl}
+              src={safePost.thumbnail.url}
               alt="thumbnail"
-              width={800}
-              height={400}
+              width={safePost.thumbnail.width}
+              height={safePost.thumbnail.height}
             />
           </div>
           <div className="mt-3 p-4">
@@ -49,13 +57,13 @@ export default function Page({ params }: { params: { id: string } }) {
                 {new Date(safePost.createdAt).toLocaleDateString()}
               </div>
               <div className="flex flex-wrap">
-                {safePost.categories.map((category: string, index: number) => {
+                {safePost.categories.map((category) => {
                   return (
                     <div
-                      key={index}
+                      key={category.id}
                       className="px-1.5 py-1 mr-2 text-xs text-blue-600 border border-blue-600 rounded"
                     >
-                      {category}
+                      {category.name}
                     </div>
                   );
                 })}
