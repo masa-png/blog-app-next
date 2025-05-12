@@ -1,29 +1,21 @@
 "use client";
 
-import { MicroCmsPost } from "@/app/_types/MicroCmsPost";
+import { Post } from "@/app/_types/post";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export default function Page({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [post, setPost] = useState<MicroCmsPost | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   // APIでpost(記事詳細)を取得する処理をuseEffectで実行
   useEffect(() => {
     const fetcher = async () => {
       setLoading(true);
-      const res = await fetch(
-        `https://m10s91bwq0.microcms.io/api/v1/posts/${id}`,
-        {
-          headers: {
-            "X-MICROCMS-API-KEY": process.env
-              .NEXT_PUBLIC_MICROCMS_API_KEY as string,
-          },
-        }
-      );
+      const res = await fetch(`/api/posts/${id}`);
       const data = await res.json();
-      setPost(data);
+      setPost(data.post);
       setLoading(false);
     };
 
@@ -32,12 +24,10 @@ export default function Page({ params }: { params: { id: string } }) {
 
   if (loading) return <p>読み込み中...</p>;
 
-  console.log(post);
-
   if (!loading && !post) return <p>投稿がみつかりませんでした</p>;
 
   // TypeScriptにpostがnullでないことを伝える型アサーション
-  const safePost = post as MicroCmsPost;
+  const safePost = post as Post;
 
   return (
     <div>
@@ -45,10 +35,10 @@ export default function Page({ params }: { params: { id: string } }) {
         <div>
           <div>
             <Image
-              src={safePost.thumbnail.url}
+              src={safePost.thumbnailUrl}
               alt="thumbnail"
-              width={safePost.thumbnail.width}
-              height={safePost.thumbnail.height}
+              height={400}
+              width={800}
             />
           </div>
           <div className="mt-3 p-4">
@@ -57,13 +47,13 @@ export default function Page({ params }: { params: { id: string } }) {
                 {new Date(safePost.createdAt).toLocaleDateString()}
               </div>
               <div className="flex flex-wrap">
-                {safePost.categories.map((category) => {
+                {safePost.postCategories.map((category) => {
                   return (
                     <div
                       key={category.id}
                       className="px-1.5 py-1 mr-2 text-xs text-blue-600 border border-blue-600 rounded"
                     >
-                      {category.name}
+                      {category.category.name}
                     </div>
                   );
                 })}
