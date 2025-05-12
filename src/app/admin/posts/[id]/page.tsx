@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Sidebar from "../../_components/Sidebar";
 import { useParams, useRouter } from "next/navigation";
 import { PostCategory } from "@/app/_types/post";
+import PostForm from "../_components/PostForm";
+import { validatePostForm } from "../../_components/validation";
 
 interface FormData {
   title: string;
@@ -81,31 +83,8 @@ export default function Page() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "タイトルは必須です。";
-    } else if (formData.title.length > 50) {
-      newErrors.title = "タイトルは50文字以内で入力してください。";
-    }
-    if (!formData.content.trim()) {
-      newErrors.content = "内容は必須です。";
-    } else if (formData.content.length > 1000) {
-      newErrors.content = "内容は1000文字以内で入力してください。";
-    }
-    if (!formData.thumbnailUrl.trim()) {
-      newErrors.thumbnailUrl = "サムネイルURLは必須です。";
-    } else {
-      const urlRegex = /^(https?:\/\/)[^\s]+$/;
-      if (!urlRegex.test(formData.thumbnailUrl)) {
-        newErrors.thumbnailUrl = "有効なURLを入力してください。";
-      }
-    }
-    if (!formData.categories.length) {
-      newErrors.categories = "カテゴリーを1つ以上選択してください。";
-    }
+    const newErrors = validatePostForm(formData);
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -172,105 +151,19 @@ export default function Page() {
 
       <div className="flex-1 p-7">
         <h1 className="text-2xl font-bold mb-8">記事編集</h1>
-        <form onSubmit={handleUpdate}>
-          <div className="mb-6">
-            <label htmlFor="title" className="block mb-2 font-medium">
-              タイトル
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              className="border border-gray-300 rounded-lg p-4 w-full"
-              value={formData.title}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              required
-            />
-            {errors.title && (
-              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
-            )}
-          </div>
-          <div className="mb-6">
-            <label htmlFor="content" className="block mb-2 font-medium">
-              内容
-            </label>
-            <textarea
-              id="content"
-              name="content"
-              rows={8}
-              className="border border-gray-300 rounded-lg p-4 w-full h-60"
-              value={formData.content}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              required
-            ></textarea>
-            {errors.content && (
-              <p className="text-red-500 text-sm mt-1">{errors.content}</p>
-            )}
-          </div>
-          <div className="mb-6">
-            <label htmlFor="thumbnailUrl" className="block mb-2 font-medium">
-              サムネイルURL
-            </label>
-            <input
-              type="text"
-              id="thumbnailUrl"
-              name="thumbnailUrl"
-              className="border border-gray-300 rounded-lg p-4 w-full"
-              value={formData.thumbnailUrl}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              required
-              placeholder="https://example.com/image.png"
-            />
-            {errors.thumbnailUrl && (
-              <p className="text-red-500 text-sm mt-1">{errors.thumbnailUrl}</p>
-            )}
-          </div>
-          <div className="mb-6">
-            <label htmlFor="category" className="block mb-2 font-medium">
-              カテゴリー
-            </label>
-            <select
-              id="category"
-              name="categories"
-              className="border border-gray-300 rounded-lg p-4 w-full"
-              value={formData.categories.map(String)}
-              onChange={handleCategoryChange}
-              disabled={isSubmitting || loadingCategories}
-              required
-              multiple
-              size={categories.length || 1}
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            {errors.categories && (
-              <p className="text-red-500 text-sm mt-1">{errors.categories}</p>
-            )}
-          </div>
-          <div className="mt-6 flex gap-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "更新中..." : "更新"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
-              onClick={handleDelete}
-              disabled={isSubmitting}
-            >
-              削除
-            </button>
-          </div>
-        </form>
+        <PostForm
+          formData={formData}
+          errors={errors}
+          isSubmitting={isSubmitting}
+          categories={categories}
+          loadingCategories={loadingCategories}
+          onChange={handleChange}
+          onCategoryChange={handleCategoryChange}
+          onSubmit={handleUpdate}
+          onDelete={handleDelete}
+          submitLabel="更新"
+          submittingLabel="更新中..."
+        />
       </div>
     </div>
   );

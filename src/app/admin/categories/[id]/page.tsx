@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../../_components/Sidebar";
 import { useParams, useRouter } from "next/navigation";
+import CategoryForm from "../_components/CategoryForm";
+import { validateCategoryForm } from "../../_components/validation";
 
 interface FormData {
   name: string;
@@ -42,16 +44,8 @@ export default function Page() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "カテゴリーを入力してください。";
-    } else if (formData.name.length > 50) {
-      newErrors.name = "カテゴリーは50文字以内で入力してください。";
-    }
-
+    const newErrors = validateCategoryForm(formData);
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -115,44 +109,16 @@ export default function Page() {
 
       <div className="flex-1 p-7">
         <h1 className="text-2xl font-bold mb-8">カテゴリー編集</h1>
-        <form onSubmit={handleUpdate}>
-          <div className="mb-6">
-            <label htmlFor="name" className="block mb-2 font-medium">
-              カテゴリー名
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              className="border border-gray-300 rounded-lg p-4 w-full"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              required
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-            )}
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "更新中..." : "更新"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
-              onClick={handleDelete}
-              disabled={isSubmitting}
-            >
-              削除
-            </button>
-          </div>
-        </form>
+        <CategoryForm
+          formData={formData}
+          errors={errors}
+          isSubmitting={isSubmitting}
+          onChange={handleChange}
+          onSubmit={handleUpdate}
+          onDelete={handleDelete}
+          submitLabel="更新"
+          submittingLabel="更新中..."
+        />
       </div>
     </div>
   );

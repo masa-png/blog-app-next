@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Sidebar from "../../_components/Sidebar";
+import CategoryForm from "../_components/CategoryForm";
+import { validateCategoryForm } from "../../_components/validation";
 
 interface FormData {
   name: string;
@@ -22,16 +24,8 @@ export default function Page() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "カテゴリーを入力してください。";
-    } else if (formData.name.length > 50) {
-      newErrors.name = "カテゴリーは50文字以内で入力してください。";
-    }
-
+    const newErrors = validateCategoryForm(formData);
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -74,36 +68,15 @@ export default function Page() {
 
       <div className="flex-1 p-7">
         <h1 className="text-2xl font-bold mb-8">カテゴリー作成</h1>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <label htmlFor="title" className="block mb-2 font-medium">
-              カテゴリー名
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              className="border border-gray-300 rounded-lg p-4 w-full"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              required
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-            )}
-          </div>
-
-          <div className="mt-6">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "作成中..." : "作成"}
-            </button>
-          </div>
-        </form>
+        <CategoryForm
+          formData={formData}
+          errors={errors}
+          isSubmitting={isSubmitting}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          submitLabel="作成"
+          submittingLabel="作成中..."
+        />
       </div>
     </div>
   );
