@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 interface PostFormProps {
   formData: {
@@ -16,8 +16,6 @@ interface PostFormProps {
   };
 
   isSubmitting: boolean;
-  categories: { id: number; name: string }[];
-  loadingCategories: boolean;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;
@@ -32,8 +30,6 @@ export default function PostForm({
   formData,
   errors,
   isSubmitting,
-  categories,
-  loadingCategories,
   onChange,
   onCategoryChange,
   onSubmit,
@@ -41,6 +37,23 @@ export default function PostForm({
   submitLabel,
   submittingLabel,
 }: PostFormProps) {
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  );
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // カテゴリー一覧取得
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      const res = await fetch("/api/admin/categories");
+      const data = await res.json();
+      setCategories(data.categories);
+      setLoadingCategories(false);
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <form onSubmit={onSubmit}>
       <div className="mb-6">

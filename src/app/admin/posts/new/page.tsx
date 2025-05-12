@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Sidebar from "../../_components/Sidebar";
 import PostForm from "../_components/PostForm";
 import { validatePostForm } from "../../_components/validation";
@@ -28,22 +28,6 @@ export default function Page() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
-    []
-  );
-  const [loadingCategories, setLoadingCategories] = useState(true);
-
-  // カテゴリー一覧取得
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories");
-      const data = await res.json();
-      setCategories(data.categories);
-      setLoadingCategories(false);
-    };
-    fetchCategories();
-  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -111,8 +95,6 @@ export default function Page() {
           formData={formData}
           errors={errors}
           isSubmitting={isSubmitting}
-          categories={categories}
-          loadingCategories={loadingCategories}
           onChange={handleChange}
           onCategoryChange={handleCategoryChange}
           onSubmit={handleSubmit}

@@ -34,10 +34,6 @@ export default function Page() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
-    []
-  );
-  const [loadingCategories, setLoadingCategories] = useState(true);
 
   // 記事詳細取得
   useEffect(() => {
@@ -58,18 +54,6 @@ export default function Page() {
     };
     fetchPost();
   }, [postId]);
-
-  // カテゴリー一覧取得
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories");
-      const data = await res.json();
-      setCategories(data.categories);
-      setLoadingCategories(false);
-    };
-    fetchCategories();
-  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -155,8 +139,6 @@ export default function Page() {
           formData={formData}
           errors={errors}
           isSubmitting={isSubmitting}
-          categories={categories}
-          loadingCategories={loadingCategories}
           onChange={handleChange}
           onCategoryChange={handleCategoryChange}
           onSubmit={handleUpdate}
