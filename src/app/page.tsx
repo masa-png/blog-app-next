@@ -2,24 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MicroCmsPost } from "./_types/MicroCmsPost";
+import { Post } from "./_types/post";
 
 export default function Page() {
-  const [posts, setPosts] = useState<MicroCmsPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   // APIでpostsを取得する処理をuseEffectで実行
   useEffect(() => {
     const fetcher = async () => {
       setLoading(true);
-      const res = await fetch("https://m10s91bwq0.microcms.io/api/v1/posts", {
-        headers: {
-          "X-MICROCMS-API-KEY": process.env
-            .NEXT_PUBLIC_MICROCMS_API_KEY as string,
-        },
-      });
-      const { contents } = await res.json();
-      setPosts(contents);
+      const res = await fetch("/api/posts");
+      const data = await res.json();
+      setPosts(data.posts);
       setLoading(false);
     };
 
@@ -35,7 +30,7 @@ export default function Page() {
       <div className="max-w-3xl mx-auto my-10 px-4">
         <ul>
           {/* ブログの記事をループして表示 */}
-          {posts.map((post: MicroCmsPost) => {
+          {posts.map((post: Post) => {
             return (
               <li key={post.id} className="flex flex-col list-none m-0 p-0">
                 <Link href={`posts/${post.id}`} className="block bg-white">
@@ -46,13 +41,13 @@ export default function Page() {
                           {new Date(post.createdAt).toLocaleDateString()}
                         </div>
                         <div className="flex flex-wrap">
-                          {post.categories.map((category) => {
+                          {post.postCategories.map((category) => {
                             return (
                               <div
                                 key={category.id}
                                 className="px-1.5 py-1 mr-2 text-xs text-blue-600 border border-blue-600 rounded"
                               >
-                                {category.name}
+                                {category.category.name}
                               </div>
                             );
                           })}
