@@ -3,31 +3,23 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Category } from "@/app/_types/post";
-import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 
 export default function Page() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoadingCategories] = useState<boolean>(false);
-  const { token } = useSupabaseSession();
+  const endpoint = "/api/admin/categories";
 
   // カテゴリー一覧取得
   useEffect(() => {
-    if (!token) return;
-
     const fetchCategories = async () => {
       setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token, // Header に token を付与
-        },
-      });
-      const data = await res.json();
+      const data = await api.get(endpoint);
       setCategories(data.categories);
       setLoadingCategories(false);
     };
     fetchCategories();
-  }, [token]);
+  }, []);
 
   return (
     <div className="px-8 py-8">

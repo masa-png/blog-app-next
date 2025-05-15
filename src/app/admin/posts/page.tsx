@@ -3,31 +3,24 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Post } from "@/app/_types/post";
-import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 
 export default function Page() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const { token } = useSupabaseSession();
+
+  const endpoint = "/api/admin/posts";
 
   // 記事一覧取得
   useEffect(() => {
-    if (!token) return;
-
     const fetchPosts = async () => {
       setLoading(true);
-      const res = await fetch("/api/admin/posts", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token, // Header に token を付与
-        },
-      });
-      const data = await res.json();
+      const data = await api.get(endpoint);
       setPosts(data.posts);
       setLoading(false);
     };
     fetchPosts();
-  }, [token]);
+  }, []);
 
   return (
     <div className="px-8 py-8">

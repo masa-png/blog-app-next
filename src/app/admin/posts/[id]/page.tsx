@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PostCategory } from "@/app/_types/post";
 import PostForm from "../_components/PostForm";
 import { validatePostForm } from "../../_components/validation";
-import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 
 interface FormData {
   title: string;
@@ -25,6 +25,7 @@ export default function Page() {
   const params = useParams();
   const router = useRouter();
   const postId = params?.id;
+  const endpoint = "/api/admin/posts/";
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -34,22 +35,13 @@ export default function Page() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { token } = useSupabaseSession();
 
   // 記事詳細取得
   useEffect(() => {
     if (!postId) return;
 
-    if (!token) return;
-
     const fetchPost = async () => {
-      const res = await fetch(`/api/admin/posts/${postId}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = await res.json();
+      const data = await api.get(`${endpoint}${postId}`);
       const post = data.post;
       setFormData({
         title: post.title,
@@ -61,7 +53,7 @@ export default function Page() {
       });
     };
     fetchPost();
-  }, [postId, token]);
+  }, [postId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -84,24 +76,16 @@ export default function Page() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (!token) return;
-
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`/api/admin/posts/${postId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          content: formData.content,
-          thumbnailImageKey: formData.thumbnailImageKey,
-          categories: formData.categories.map((id) => ({ id })),
-        }),
+      const res = await api.put(`${endpoint}${postId}`, {
+        title: formData.title,
+        content: formData.content,
+        thumbnailImageKey: formData.thumbnailImageKey,
+        categories: formData.categories.map((id) => ({ id })),
       });
+
       if (res.ok) {
         alert("記事を更新しました");
         router.push("/admin/posts");
@@ -122,17 +106,9 @@ export default function Page() {
 
     if (!window.confirm("本当に削除しますか？")) return;
 
-    if (!token) return;
-
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/posts/${postId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
+      const res = await api.delete(`${endpoint}${postId}`);
       if (res.ok) {
         alert("記事を削除しました");
         router.push("/admin/posts");

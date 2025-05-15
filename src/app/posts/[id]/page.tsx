@@ -47,7 +47,7 @@ export default function Page({ params }: { params: { id: string } }) {
         <div>
           <div>
             <Image
-              src={thumbnailUrl ? thumbnailUrl : ""}
+              src={thumbnailUrl || ""}
               alt="thumbnail"
               height={400}
               width={800}

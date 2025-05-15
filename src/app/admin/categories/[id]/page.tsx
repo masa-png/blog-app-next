@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CategoryForm from "../_components/CategoryForm";
 import { validateCategoryForm } from "../../_components/validation";
-import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 
 interface FormData {
   name: string;
@@ -24,29 +24,21 @@ export default function Page() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { token } = useSupabaseSession();
+  const endpoint = "/api/admin/categories/";
 
   // カテゴリーの取得
   useEffect(() => {
     if (!categoryId) return;
 
-    if (!token) return;
-
     const fetchCategory = async () => {
-      const res = await fetch(`/api/admin/categories/${categoryId}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
-      const data = await res.json();
+      const data = await api.get(`${endpoint}${categoryId}`);
       const category = data.category;
       setFormData({
         name: category.name,
       });
     };
     fetchCategory();
-  }, [categoryId, token]);
+  }, [categoryId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -61,21 +53,13 @@ export default function Page() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (!token) return;
-
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`/api/admin/categories/${categoryId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-        }),
+      const res = await api.put(`${endpoint}${categoryId}`, {
+        name: formData.name,
       });
+
       if (res.ok) {
         alert("カテゴリーを更新しました");
         router.push("/admin/categories");
@@ -96,17 +80,9 @@ export default function Page() {
 
     if (!window.confirm("本当に削除しますか？")) return;
 
-    if (!token) return;
-
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/categories/${categoryId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
+      const res = await api.delete(`${endpoint}${categoryId}`);
       if (res.ok) {
         alert("カテゴリーを削除しました");
         router.push("/admin/categories");

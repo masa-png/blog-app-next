@@ -1,6 +1,7 @@
 "use client";
 
 import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 import { supabase } from "@/utils/supabase";
 import Image from "next/image";
 import React, { ChangeEvent, useEffect, useState } from "react";
@@ -51,20 +52,13 @@ export default function PostForm({
   const [thumbnailImageKey, setThumbnailImageKey] = useState("");
   // Imageタグのsrcにセットする画像URLを持たせるstate
   const [thumbnailUrl, setThumbnailUrl] = useState<null | string>(null);
+  const endpoint = "/api/admin/categories";
 
   // カテゴリー一覧取得
   useEffect(() => {
-    if (!token) return;
-
     const fetchCategories = async () => {
       setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token, // Header に token を付与
-        },
-      });
-      const data = await res.json();
+      const data = await api.get(endpoint);
       setCategories(data.categories);
       setLoadingCategories(false);
     };

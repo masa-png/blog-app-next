@@ -3,7 +3,7 @@
 import { useState } from "react";
 import CategoryForm from "../_components/CategoryForm";
 import { validateCategoryForm } from "../../_components/validation";
-import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import api from "@/app/_utils/api";
 
 interface FormData {
   name: string;
@@ -19,7 +19,7 @@ export default function Page() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { token } = useSupabaseSession();
+  const endpoint = "/api/admin/categories";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,20 +35,11 @@ export default function Page() {
 
     if (!validateForm()) return;
 
-    if (!token) return;
-
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/admin/categories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-        }),
+      const res = await api.post(endpoint, {
+        name: formData.name,
       });
       if (res.ok) {
         alert("カテゴリーを新規作成しました");
