@@ -9,14 +9,14 @@ interface CategoryFormErrors {
 interface PostFormData {
   title: string;
   content: string;
-  thumbnailUrl: string;
+  thumbnailImageKey?: string;
   categories: number[];
 }
 
 interface PostFormErrors {
   title?: string;
   content?: string;
-  thumbnailUrl?: string;
+  thumbnailImageKey?: string;
   categories?: string;
 }
 
@@ -49,14 +49,14 @@ export function validatePostForm(formData: PostFormData): PostFormErrors {
     errors.content = "内容は1000文字以内で入力してください。";
   }
 
-  if (!formData.thumbnailUrl.trim()) {
-    errors.thumbnailUrl = "サムネイルURLは必須です。";
-  } else {
-    const urlRegex = /^(https?:\/\/)[^\s]+$/;
-    if (!urlRegex.test(formData.thumbnailUrl)) {
-      errors.thumbnailUrl = "有効なURLを入力してください。";
-    }
-  }
+  // if (!formData.thumbnailImageKey.trim()) {
+  //   errors.thumbnailImageKey = "サムネイルURLは必須です。";
+  // } else {
+  //   const urlRegex = /^(https?:\/\/)[^\s]+$/;
+  //   if (!urlRegex.test(formData.thumbnailImageKey)) {
+  //     errors.thumbnailImageKey = "有効なURLを入力してください。";
+  //   }
+  // }
 
   if (!formData.categories.length) {
     errors.categories = "カテゴリーを1つ以上選択してください。";

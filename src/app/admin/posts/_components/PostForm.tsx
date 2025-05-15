@@ -1,17 +1,23 @@
-import React, { useEffect, useState } from "react";
+"use client";
+
+import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
+import { supabase } from "@/utils/supabase";
+import Image from "next/image";
+import React, { ChangeEvent, useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid"; // 固有IDを生成するライブラリ
 
 interface PostFormProps {
   formData: {
     title: string;
     content: string;
-    thumbnailUrl: string;
+    thumbnailImageKey?: string;
     categories: number[];
   };
 
   errors: {
     title?: string;
     content?: string;
-    thumbnailUrl?: string;
+    thumbnailImageKey?: string;
     categories?: string;
   };
 
@@ -41,18 +47,87 @@ export default function PostForm({
     []
   );
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const { token } = useSupabaseSession();
+  const [thumbnailImageKey, setThumbnailImageKey] = useState("");
+  // Imageタグのsrcにセットする画像URLを持たせるstate
+  const [thumbnailUrl, setThumbnailUrl] = useState<null | string>(null);
 
   // カテゴリー一覧取得
   useEffect(() => {
+    if (!token) return;
+
     const fetchCategories = async () => {
       setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories");
+      const res = await fetch("/api/admin/categories", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token, // Header に token を付与
+        },
+      });
       const data = await res.json();
       setCategories(data.categories);
       setLoadingCategories(false);
     };
     fetchCategories();
-  }, []);
+  }, [token]);
+
+  // 画像のアップロード
+  const handleImageChange = async (
+    event: ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
+    if (!event.target.files || event.target.files.length == 0) {
+      // 画像が選択されていないのでreturn
+      return;
+    }
+
+    const file = event.target.files[0]; // 選択された画像を取得
+
+    const filePath = `private/${uuidv4()}`; // ファイルパスを指定
+
+    // Supabaseに画像をアップロード
+    const { data, error } = await supabase.storage
+      .from("post-thumbnail") // ここでバケット名を指定
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    // アップロードに失敗したらエラーを表示して終了
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    // data.pathに、画像固有のkeyが入っているので、thumbnailImageKeyに格納する
+    setThumbnailImageKey(data.path);
+
+    // フォームデータにthumbnailImageKeyを設定
+    const syntheticEvent = {
+      target: {
+        name: "thumbnailImageKey",
+        value: data.path,
+      },
+    } as React.ChangeEvent<HTMLInputElement>;
+
+    onChange(syntheticEvent);
+  };
+
+  // アップロード時に取得した、thumbnailImageKeyを用いて画像のURLを取得
+  useEffect(() => {
+    if (!thumbnailImageKey) return;
+
+    const fetcher = async () => {
+      const {
+        data: { publicUrl },
+      } = await supabase.storage
+        .from("post-thumbnail")
+        .getPublicUrl(thumbnailImageKey);
+
+      setThumbnailUrl(publicUrl);
+    };
+
+    fetcher();
+  }, [thumbnailImageKey]);
 
   return (
     <form onSubmit={onSubmit}>
@@ -93,22 +168,25 @@ export default function PostForm({
         )}
       </div>
       <div className="mb-6">
-        <label htmlFor="thumbnailUrl" className="block mb-2 font-medium">
+        <label htmlFor="thumbnailImageKey" className="block mb-2 font-medium">
           サムネイルURL
         </label>
         <input
-          type="text"
-          id="thumbnailUrl"
-          name="thumbnailUrl"
-          className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.thumbnailUrl}
-          onChange={onChange}
+          type="file"
+          id="thumbnailImageKey"
+          onChange={handleImageChange}
+          accept="image/*"
           disabled={isSubmitting}
-          required
-          placeholder="https://example.com/image.png"
         />
-        {errors.thumbnailUrl && (
-          <p className="text-red-500 text-sm mt-1">{errors.thumbnailUrl}</p>
+        {/* 画像の表示 */}
+        {thumbnailUrl && (
+          <Image
+            src={thumbnailUrl}
+            alt="thumbnail"
+            width={400}
+            height={400}
+            className="mt-2"
+          />
         )}
       </div>
       <div className="mb-6">

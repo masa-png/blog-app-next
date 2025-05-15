@@ -1,6 +1,7 @@
 "use client";
 
 import { Post } from "@/app/_types/post";
+import { supabase } from "@/utils/supabase";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -8,6 +9,7 @@ export default function Page({ params }: { params: { id: string } }) {
   const { id } = params;
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<null | string>(null);
 
   // APIでpost(記事詳細)を取得する処理をuseEffectで実行
   useEffect(() => {
@@ -16,6 +18,16 @@ export default function Page({ params }: { params: { id: string } }) {
       const res = await fetch(`/api/posts/${id}`);
       const data = await res.json();
       setPost(data.post);
+
+      if (data.post?.thumbnailImageKey) {
+        const {
+          data: { publicUrl },
+        } = await supabase.storage
+          .from("post-thumbnail")
+          .getPublicUrl(data.post.thumbnailImageKey);
+
+        setThumbnailUrl(publicUrl);
+      }
       setLoading(false);
     };
 
@@ -31,11 +43,11 @@ export default function Page({ params }: { params: { id: string } }) {
 
   return (
     <div>
-      <div className="max-w-3xl mt-16 mx-auto">
+      <div className="max-w-3xl mt-36 mx-auto">
         <div>
           <div>
             <Image
-              src={safePost.thumbnailUrl}
+              src={thumbnailUrl ? thumbnailUrl : ""}
               alt="thumbnail"
               height={400}
               width={800}

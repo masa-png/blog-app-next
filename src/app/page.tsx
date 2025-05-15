@@ -27,7 +27,7 @@ export default function Page() {
 
   return (
     <div>
-      <div className="max-w-3xl mx-auto my-10 px-4">
+      <div className="max-w-3xl mx-auto mt-36 px-4">
         <ul>
           {/* ブログの記事をループして表示 */}
           {posts.map((post: Post) => {

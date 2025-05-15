@@ -1,23 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Sidebar from "../../_components/Sidebar";
 import { useParams, useRouter } from "next/navigation";
 import { PostCategory } from "@/app/_types/post";
 import PostForm from "../_components/PostForm";
 import { validatePostForm } from "../../_components/validation";
+import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
 
 interface FormData {
   title: string;
   content: string;
-  thumbnailUrl: string;
+  thumbnailImageKey?: string;
   categories: number[];
 }
 
 interface FormErrors {
   title?: string;
   content?: string;
-  thumbnailUrl?: string;
+  thumbnailImageKey?: string;
   categories?: string;
 }
 
@@ -29,31 +29,39 @@ export default function Page() {
   const [formData, setFormData] = useState<FormData>({
     title: "",
     content: "",
-    thumbnailUrl: "",
+    thumbnailImageKey: "",
     categories: [],
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { token } = useSupabaseSession();
 
   // 記事詳細取得
   useEffect(() => {
     if (!postId) return;
 
+    if (!token) return;
+
     const fetchPost = async () => {
-      const res = await fetch(`/api/admin/posts/${postId}`);
+      const res = await fetch(`/api/admin/posts/${postId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+      });
       const data = await res.json();
       const post = data.post;
       setFormData({
         title: post.title,
         content: post.content,
-        thumbnailUrl: post.thumbnailUrl,
+        thumbnailImageKey: post.thumbnailImageKey,
         categories: post.postCategories.map(
           (category: PostCategory) => category.id
         ),
       });
     };
     fetchPost();
-  }, [postId]);
+  }, [postId, token]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -76,16 +84,21 @@ export default function Page() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    if (!token) return;
+
     setIsSubmitting(true);
 
     try {
       const res = await fetch(`/api/admin/posts/${postId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
         body: JSON.stringify({
           title: formData.title,
           content: formData.content,
-          thumbnailUrl: formData.thumbnailUrl,
+          thumbnailImageKey: formData.thumbnailImageKey,
           categories: formData.categories.map((id) => ({ id })),
         }),
       });
@@ -109,10 +122,16 @@ export default function Page() {
 
     if (!window.confirm("本当に削除しますか？")) return;
 
+    if (!token) return;
+
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/admin/posts/${postId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
       });
       if (res.ok) {
         alert("記事を削除しました");
@@ -130,23 +149,19 @@ export default function Page() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#fafbfc]">
-      <Sidebar />
-
-      <div className="flex-1 p-7">
-        <h1 className="text-2xl font-bold mb-8">記事編集</h1>
-        <PostForm
-          formData={formData}
-          errors={errors}
-          isSubmitting={isSubmitting}
-          onChange={handleChange}
-          onCategoryChange={handleCategoryChange}
-          onSubmit={handleUpdate}
-          onDelete={handleDelete}
-          submitLabel="更新"
-          submittingLabel="更新中..."
-        />
-      </div>
+    <div className="p-7">
+      <h1 className="text-2xl font-bold mb-8">記事編集</h1>
+      <PostForm
+        formData={formData}
+        errors={errors}
+        isSubmitting={isSubmitting}
+        onChange={handleChange}
+        onCategoryChange={handleCategoryChange}
+        onSubmit={handleUpdate}
+        onDelete={handleDelete}
+        submitLabel="更新"
+        submittingLabel="更新中..."
+      />
     </div>
   );
 }

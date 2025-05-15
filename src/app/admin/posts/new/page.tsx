@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import Sidebar from "../../_components/Sidebar";
 import PostForm from "../_components/PostForm";
 import { validatePostForm } from "../../_components/validation";
+import { useSupabaseSession } from "@/app/_hooks/useSupabaseSession";
 
 interface FormData {
   title: string;
   content: string;
-  thumbnailUrl: string;
+  thumbnailImageKey: string;
   categories: number[];
 }
 
 interface FormErrors {
   title?: string;
   content?: string;
-  thumbnailUrl?: string;
+  thumbnailImageKey?: string;
   categories?: string;
 }
 
@@ -23,11 +23,12 @@ export default function Page() {
   const [formData, setFormData] = useState<FormData>({
     title: "",
     content: "",
-    thumbnailUrl: "",
+    thumbnailImageKey: "",
     categories: [],
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { token } = useSupabaseSession();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -51,16 +52,21 @@ export default function Page() {
 
     if (!validateForm()) return;
 
+    if (!token) return;
+
     setIsSubmitting(true);
 
     try {
       const res = await fetch("/api/admin/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
         body: JSON.stringify({
           title: formData.title,
           content: formData.content,
-          thumbnailUrl: formData.thumbnailUrl,
+          thumbnailUrl: formData.thumbnailImageKey,
           categories: formData.categories.map((id) => ({ id })),
         }),
       });
@@ -69,7 +75,7 @@ export default function Page() {
         setFormData({
           title: "",
           content: "",
-          thumbnailUrl: "",
+          thumbnailImageKey: "",
           categories: [],
         });
         setErrors({});
@@ -86,22 +92,18 @@ export default function Page() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#fafbfc]">
-      <Sidebar />
-
-      <div className="flex-1 p-7">
-        <h1 className="text-2xl font-bold mb-8">記事作成</h1>
-        <PostForm
-          formData={formData}
-          errors={errors}
-          isSubmitting={isSubmitting}
-          onChange={handleChange}
-          onCategoryChange={handleCategoryChange}
-          onSubmit={handleSubmit}
-          submitLabel="作成"
-          submittingLabel="作成中..."
-        />
-      </div>
+    <div className="p-7">
+      <h1 className="text-2xl font-bold mb-8">記事作成</h1>
+      <PostForm
+        formData={formData}
+        errors={errors}
+        isSubmitting={isSubmitting}
+        onChange={handleChange}
+        onCategoryChange={handleCategoryChange}
+        onSubmit={handleSubmit}
+        submitLabel="作成"
+        submittingLabel="作成中..."
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { supabase } from "@/utils/supabase";
 
 const prisma = new PrismaClient();
 
@@ -8,7 +9,7 @@ interface UpdatePostRequestBody {
   title: string;
   content: string;
   categories: { id: number }[];
-  thumbnailUrl: string;
+  thumbnailImageKey: string;
 }
 
 export const GET = async (
@@ -16,7 +17,16 @@ export const GET = async (
   { params }: { params: { id: string } }
 ) => {
   const { id } = params;
+  const token = request.headers.get("Authorization") ?? "";
 
+  // supabaseに対してtokenを送る
+  const { error } = await supabase.auth.getUser(token);
+
+  // 送ったtokenが正しくない場合、errorが返却されるので、クライアントにもエラーを返す
+  if (error)
+    return NextResponse.json({ status: error.message }, { status: 400 });
+
+  // tokenが正しい場合、以降が実行される
   try {
     const post = await prisma.post.findUnique({
       where: {
@@ -49,10 +59,23 @@ export const PUT = async (
 ) => {
   // paramsの中にidが入っているので、それを取り出す
   const { id } = params;
+  const token = request.headers.get("Authorization") ?? "";
 
+  // supabaseに対してtokenを送る
+  const { error } = await supabase.auth.getUser(token);
+
+  // 送ったtokenが正しくない場合、errorが返却されるので、クライアントにもエラーを返す
+  if (error)
+    return NextResponse.json({ status: error.message }, { status: 400 });
+
+  // tokenが正しい場合、以降が実行される
   // リクエストのbodyを取得
-  const { title, content, categories, thumbnailUrl }: UpdatePostRequestBody =
-    await request.json();
+  const {
+    title,
+    content,
+    categories,
+    thumbnailImageKey,
+  }: UpdatePostRequestBody = await request.json();
 
   try {
     // idを指定して、Postを更新
@@ -63,7 +86,7 @@ export const PUT = async (
       data: {
         title,
         content,
-        thumbnailUrl,
+        thumbnailImageKey,
       },
     });
 
@@ -99,7 +122,16 @@ export const DELETE = async (
 ) => {
   // paramsの中にidが入っているので、それを取り出す
   const { id } = params;
+  const token = request.headers.get("Authorization") ?? "";
 
+  // supabaseに対してtokenを送る
+  const { error } = await supabase.auth.getUser(token);
+
+  // 送ったtokenが正しくない場合、errorが返却されるので、クライアントにもエラーを返す
+  if (error)
+    return NextResponse.json({ status: error.message }, { status: 400 });
+
+  // tokenが正しい場合、以降が実行される
   try {
     // idを指定して、Postを削除
     await prisma.post.delete({
