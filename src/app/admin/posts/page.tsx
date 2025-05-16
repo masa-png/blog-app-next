@@ -1,26 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { Post } from "@/app/_types/post";
 import api from "@/app/_utils/api";
 
-export default function Page() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+const fetchPosts = (url: string) => api.get(url);
 
+export default function Page() {
   const endpoint = "/api/admin/posts";
 
-  // 記事一覧取得
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      const data = await api.get(endpoint);
-      setPosts(data.posts);
-      setLoading(false);
-    };
-    fetchPosts();
-  }, []);
+  // SWRフックを使用してデータを取得
+  const { data, error, isLoading } = useSWR(endpoint, fetchPosts);
+
+  // データが利用可能になったらpostsを抽出
+  const posts: Post[] = data?.posts || [];
 
   return (
     <div className="px-8 py-8">
@@ -34,10 +28,12 @@ export default function Page() {
         </Link>
       </div>
       <div>
-        {loading ? (
+        {error ? (
+          <div>エラーが発生しました: {error.message}</div>
+        ) : isLoading ? (
           <div>読み込み中...</div>
         ) : (
-          posts.map((post) => (
+          posts.map((post: Post) => (
             <div key={post.id} className="border-b border-gray-200 py-6">
               <div className="font-bold text-xl mb-1">{post.title}</div>
               <div className="text-gray-400 text-base">

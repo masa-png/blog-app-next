@@ -1,25 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { Category } from "@/app/_types/post";
 import api from "@/app/_utils/api";
 
+const fetchCategories = (url: string) => api.get(url);
+
 export default function Page() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoadingCategories] = useState<boolean>(false);
   const endpoint = "/api/admin/categories";
 
-  // カテゴリー一覧取得
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      const data = await api.get(endpoint);
-      setCategories(data.categories);
-      setLoadingCategories(false);
-    };
-    fetchCategories();
-  }, []);
+  // SWRフックを使用してデータを取得
+  const { data, error, isLoading } = useSWR(endpoint, fetchCategories);
+
+  // データが利用可能になったらcategoriesを抽出
+  const categories: Category[] = data?.categories || [];
 
   return (
     <div className="px-8 py-8">
@@ -33,8 +28,16 @@ export default function Page() {
         </Link>
       </div>
       <div>
-        {loading ? (
-          <div>読み込み中...</div>
+        {error ? (
+          <div className="py-4 text-red-500">
+            エラーが発生しました: {error.message}
+          </div>
+        ) : isLoading ? (
+          <div className="py-4">読み込み中...</div>
+        ) : categories.length === 0 ? (
+          <div className="py-4 text-gray-500">
+            カテゴリーがありません。新規作成ボタンからカテゴリーを追加してください。
+          </div>
         ) : (
           categories.map((category) => (
             <div key={category.id} className="border-b border-gray-200 py-6">

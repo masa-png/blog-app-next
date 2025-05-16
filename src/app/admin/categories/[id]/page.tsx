@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import CategoryForm from "../_components/CategoryForm";
 import { validateCategoryForm } from "../../_components/validation";
 import api from "@/app/_utils/api";
@@ -14,31 +15,34 @@ interface FormErrors {
   name?: string;
 }
 
+const fetcherCategory = (url: string) => api.get(url);
+
 export default function Page() {
   const params = useParams();
   const router = useRouter();
   const categoryId = params?.id;
+  const endpoint = "/api/admin/categories/";
+  const categoryUrl = categoryId ? `${endpoint}${categoryId}` : null;
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const endpoint = "/api/admin/categories/";
+  const [formInitialized, setFormInitialized] = useState(false);
 
-  // カテゴリーの取得
+  // SWRを使用してカテゴリーデータを取得
+  const { data, error, isLoading } = useSWR(categoryUrl, fetcherCategory);
+
+  // データが利用可能になったらフォームデータを設定
   useEffect(() => {
-    if (!categoryId) return;
-
-    const fetchCategory = async () => {
-      const data = await api.get(`${endpoint}${categoryId}`);
-      const category = data.category;
+    if (data?.category && !formInitialized) {
       setFormData({
-        name: category.name,
+        name: data.category.name,
       });
-    };
-    fetchCategory();
-  }, [categoryId]);
+      setFormInitialized(true);
+    }
+  }, [data, formInitialized]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -61,6 +65,11 @@ export default function Page() {
       });
 
       if (res.ok) {
+        // カテゴリー一覧のキャッシュを更新
+        mutate(endpoint);
+        // 現在のカテゴリーのキャッシュを更新
+        mutate(categoryUrl);
+
         alert("カテゴリーを更新しました");
         router.push("/admin/categories");
       } else {
@@ -84,6 +93,9 @@ export default function Page() {
     try {
       const res = await api.delete(`${endpoint}${categoryId}`);
       if (res.ok) {
+        // カテゴリー一覧のキャッシュを更新
+        mutate(endpoint);
+
         alert("カテゴリーを削除しました");
         router.push("/admin/categories");
       } else {
@@ -98,19 +110,27 @@ export default function Page() {
     }
   };
 
+  // エラーとローディング状態の処理
+  if (error)
+    return <div className="p-7">エラーが発生しました: {error.message}</div>;
+
   return (
     <div className="p-7">
       <h1 className="text-2xl font-bold mb-8">カテゴリー編集</h1>
-      <CategoryForm
-        formData={formData}
-        errors={errors}
-        isSubmitting={isSubmitting}
-        onChange={handleChange}
-        onSubmit={handleUpdate}
-        onDelete={handleDelete}
-        submitLabel="更新"
-        submittingLabel="更新中..."
-      />
+      {isLoading ? (
+        <div>読み込み中...</div>
+      ) : (
+        <CategoryForm
+          formData={formData}
+          errors={errors}
+          isSubmitting={isSubmitting}
+          onChange={handleChange}
+          onSubmit={handleUpdate}
+          onDelete={handleDelete}
+          submitLabel="更新"
+          submittingLabel="更新中..."
+        />
+      )}
     </div>
   );
 }

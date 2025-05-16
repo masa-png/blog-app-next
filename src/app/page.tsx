@@ -1,29 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { Post } from "./_types/post";
 
+const fetchPosts = (url: string) => fetch(url).then((res) => res.json());
+
 export default function Page() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  // SWRフックを使用してデータを取得
+  const { data, error, isLoading } = useSWR("/api/posts", fetchPosts);
 
-  // APIでpostsを取得する処理をuseEffectで実行
-  useEffect(() => {
-    const fetcher = async () => {
-      setLoading(true);
-      const res = await fetch("/api/posts");
-      const data = await res.json();
-      setPosts(data.posts);
-      setLoading(false);
-    };
+  // データが利用可能になったらpostsを抽出
+  const posts: Post[] = data?.posts || [];
 
-    fetcher();
-  }, []);
+  // ローディング状態の表示
+  if (isLoading)
+    return <p className="max-w-3xl mx-auto mt-36 px-4">読み込み中...</p>;
 
-  if (loading) return <p>読み込み中...</p>;
+  // エラー状態の表示
+  if (error)
+    return (
+      <p className="max-w-3xl mx-auto mt-36 px-4">
+        エラーが発生しました: {error.message}
+      </p>
+    );
 
-  if (!loading && posts.length === 0) return <p>投稿がみつかりませんでした</p>;
+  // 投稿が見つからない場合の表示
+  if (posts.length === 0)
+    return (
+      <p className="max-w-3xl mx-auto mt-36 px-4">投稿がみつかりませんでした</p>
+    );
 
   return (
     <div>

@@ -3,43 +3,55 @@
 import { Post } from "@/app/_types/post";
 import { supabase } from "@/utils/supabase";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
+
+const fetchPost = (url: string) => fetch(url).then((res) => res.json());
+
+// 画像URL取得用のフェッチャー
+const imageUrlFetcher = async (key: string) => {
+  if (!key) return null;
+  const { data } = await supabase.storage
+    .from("post-thumbnail")
+    .getPublicUrl(key);
+  return data.publicUrl;
+};
 
 export default function Page({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [thumbnailUrl, setThumbnailUrl] = useState<null | string>(null);
 
-  // APIでpost(記事詳細)を取得する処理をuseEffectで実行
-  useEffect(() => {
-    const fetcher = async () => {
-      setLoading(true);
-      const res = await fetch(`/api/posts/${id}`);
-      const data = await res.json();
-      setPost(data.post);
+  // 記事データを取得
+  const {
+    data: postData,
+    error: postError,
+    isLoading: postLoading,
+  } = useSWR(`/api/posts/${id}`, fetchPost);
 
-      if (data.post?.thumbnailImageKey) {
-        const {
-          data: { publicUrl },
-        } = await supabase.storage
-          .from("post-thumbnail")
-          .getPublicUrl(data.post.thumbnailImageKey);
+  // 記事が利用可能になったら取得
+  const post: Post | null = postData?.post || null;
 
-        setThumbnailUrl(publicUrl);
-      }
-      setLoading(false);
-    };
+  // サムネイル画像のURLを取得（記事データが利用可能になった後）
+  const { data: thumbnailUrl } = useSWR(
+    () => post?.thumbnailImageKey || null,
+    imageUrlFetcher
+  );
 
-    fetcher();
-  }, [id]);
+  // ローディング状態の表示
+  if (postLoading)
+    return <p className="max-w-3xl mx-auto mt-36 px-4">読み込み中...</p>;
 
-  if (loading) return <p>読み込み中...</p>;
+  // エラー状態の表示
+  if (postError)
+    return (
+      <p className="max-w-3xl mx-auto mt-36 px-4">
+        エラーが発生しました: {postError.message}
+      </p>
+    );
 
-  if (!loading && !post) return <p>投稿がみつかりませんでした</p>;
-
-  // TypeScriptにpostがnullでないことを伝える型アサーション
-  const safePost = post as Post;
+  // 投稿が見つからない場合の表示
+  if (!post)
+    return (
+      <p className="max-w-3xl mx-auto mt-36 px-4">投稿がみつかりませんでした</p>
+    );
 
   return (
     <div>
@@ -56,10 +68,10 @@ export default function Page({ params }: { params: { id: string } }) {
           <div className="mt-3 p-4">
             <div className="flex justify-between">
               <div className="text-gray-400 text-xs">
-                {new Date(safePost.createdAt).toLocaleDateString()}
+                {new Date(post.createdAt).toLocaleDateString()}
               </div>
               <div className="flex flex-wrap">
-                {safePost.postCategories.map((category) => {
+                {post.postCategories.map((category) => {
                   return (
                     <div
                       key={category.id}
@@ -71,9 +83,9 @@ export default function Page({ params }: { params: { id: string } }) {
                 })}
               </div>
             </div>
-            <p className="text-[#000] text-2xl mb-4 mt-2">{safePost.title}</p>
+            <p className="text-[#000] text-2xl mb-4 mt-2">{post.title}</p>
             <div
-              dangerouslySetInnerHTML={{ __html: safePost.content }}
+              dangerouslySetInnerHTML={{ __html: post.content }}
               className="text-[#000] text-base leading-normal"
             ></div>
           </div>
