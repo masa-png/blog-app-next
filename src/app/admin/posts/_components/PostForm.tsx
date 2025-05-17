@@ -1,61 +1,111 @@
+"use client";
+
+import api from "@/app/_utils/api";
+import { supabase } from "@/utils/supabase";
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
+import useSWR from "swr";
+import { Category } from "@/app/_types/post";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { postFormSchema, PostFormSchema } from "../../../_lib/validation";
 
 interface PostFormProps {
-  formData: {
-    title: string;
-    content: string;
-    thumbnailUrl: string;
-    categories: number[];
-  };
-
-  errors: {
-    title?: string;
-    content?: string;
-    thumbnailUrl?: string;
-    categories?: string;
-  };
-
-  isSubmitting: boolean;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => void;
-  onCategoryChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  defaultValues?: PostFormSchema;
+  onSubmit: (data: PostFormSchema, e: React.BaseSyntheticEvent) => void;
   onDelete?: (e: React.FormEvent) => void;
   submitLabel: string;
   submittingLabel: string;
 }
 
+const fetchCategories = (url: string) => api.get(url);
+
 export default function PostForm({
-  formData,
-  errors,
-  isSubmitting,
-  onChange,
-  onCategoryChange,
+  defaultValues,
   onSubmit,
   onDelete,
   submitLabel,
   submittingLabel,
 }: PostFormProps) {
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
-    []
+  const endpoint = "/api/admin/categories";
+  const { data: categoriesData, isLoading: loadingCategories } = useSWR(
+    endpoint,
+    fetchCategories
   );
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const categories: Category[] = categoriesData?.categories || [];
 
-  // カテゴリー一覧取得
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<PostFormSchema>({
+    resolver: zodResolver(postFormSchema),
+    defaultValues: defaultValues || {
+      title: "",
+      content: "",
+      thumbnailImageKey: "",
+      categories: [],
+    },
+  });
+
+  // サムネイル画像のURL取得
+  const thumbnailImageKey = watch("thumbnailImageKey");
   useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      const res = await fetch("/api/admin/categories");
-      const data = await res.json();
-      setCategories(data.categories);
-      setLoadingCategories(false);
+    if (!thumbnailImageKey) {
+      setThumbnailUrl(null);
+      return;
+    }
+    const fetchImageUrl = async () => {
+      const { data } = await supabase.storage
+        .from("post-thumbnail")
+        .getPublicUrl(thumbnailImageKey || "");
+      setThumbnailUrl(data.publicUrl);
     };
-    fetchCategories();
-  }, []);
+    fetchImageUrl();
+  }, [thumbnailImageKey]);
+
+  // 画像アップロード
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    const file = event.target.files[0];
+    const filePath = `private/${uuidv4()}`;
+    try {
+      const { data, error } = await supabase.storage
+        .from("post-thumbnail")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+      if (error) {
+        alert(`画像のアップロードに失敗しました: ${error.message}`);
+        return;
+      }
+      setValue("thumbnailImageKey", data.path, { shouldValidate: true });
+    } catch (error) {
+      alert("画像のアップロード中にエラーが発生しました。");
+      console.error(error);
+    }
+  };
+
+  // カテゴリー選択
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = Array.from(e.target.selectedOptions, (option) =>
+      Number(option.value)
+    );
+    setValue("categories", selected, { shouldValidate: true });
+  };
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit((data, e) => onSubmit(data, e!))}>
       <div className="mb-6">
         <label htmlFor="title" className="block mb-2 font-medium">
           タイトル
@@ -63,15 +113,12 @@ export default function PostForm({
         <input
           type="text"
           id="title"
-          name="title"
+          {...register("title")}
           className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.title}
-          onChange={onChange}
           disabled={isSubmitting}
-          required
         />
         {errors.title && (
-          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+          <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
         )}
       </div>
       <div className="mb-6">
@@ -80,60 +127,66 @@ export default function PostForm({
         </label>
         <textarea
           id="content"
-          name="content"
           rows={8}
+          {...register("content")}
           className="border border-gray-300 rounded-lg p-4 w-full h-60"
-          value={formData.content}
-          onChange={onChange}
           disabled={isSubmitting}
-          required
         ></textarea>
         {errors.content && (
-          <p className="text-red-500 text-sm mt-1">{errors.content}</p>
+          <p className="text-red-500 text-sm mt-1">{errors.content.message}</p>
         )}
       </div>
       <div className="mb-6">
-        <label htmlFor="thumbnailUrl" className="block mb-2 font-medium">
-          サムネイルURL
+        <label htmlFor="thumbnailImageKey" className="block mb-2 font-medium">
+          サムネイル画像
         </label>
         <input
-          type="text"
-          id="thumbnailUrl"
-          name="thumbnailUrl"
-          className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.thumbnailUrl}
-          onChange={onChange}
+          type="file"
+          id="thumbnailImageKey"
+          onChange={handleImageChange}
+          accept="image/*"
           disabled={isSubmitting}
-          required
-          placeholder="https://example.com/image.png"
         />
-        {errors.thumbnailUrl && (
-          <p className="text-red-500 text-sm mt-1">{errors.thumbnailUrl}</p>
+        {/* 画像の表示 */}
+        {thumbnailUrl && (
+          <div className="mt-2">
+            <Image
+              src={thumbnailUrl}
+              alt="thumbnail"
+              width={400}
+              height={400}
+              className="rounded border border-gray-200"
+            />
+          </div>
         )}
       </div>
       <div className="mb-6">
         <label htmlFor="category" className="block mb-2 font-medium">
           カテゴリー
         </label>
-        <select
-          id="category"
-          name="categories"
-          className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.categories.map(String)}
-          onChange={onCategoryChange}
-          disabled={isSubmitting || loadingCategories}
-          required
-          multiple
-          size={categories.length || 1}
-        >
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+        {loadingCategories ? (
+          <p>カテゴリーを読み込み中...</p>
+        ) : (
+          <select
+            id="category"
+            className="border border-gray-300 rounded-lg p-4 w-full"
+            value={watch("categories").map(String)}
+            onChange={handleCategoryChange}
+            disabled={isSubmitting}
+            multiple
+            size={Math.min(categories.length || 1, 5)}
+          >
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        )}
         {errors.categories && (
-          <p className="text-red-500 text-sm mt-1">{errors.categories}</p>
+          <p className="text-red-500 text-sm mt-1">
+            {errors.categories.message}
+          </p>
         )}
       </div>
       <div className="mt-6 flex gap-4">

@@ -1,28 +1,39 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  categoryFormSchema,
+  CategoryFormSchema,
+} from "../../../_lib/validation";
 import React from "react";
 
 interface CategoryFormProps {
-  formData: { name: string };
-  errors: { name?: string };
-  isSubmitting: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  defaultValues?: CategoryFormSchema;
+  onSubmit: (data: CategoryFormSchema, e: React.BaseSyntheticEvent) => void;
   onDelete?: (e: React.FormEvent) => void;
   submitLabel: string;
   submittingLabel: string;
 }
 
 export default function CategoryForm({
-  formData,
-  errors,
-  isSubmitting,
-  onChange,
+  defaultValues,
   onSubmit,
   onDelete,
   submitLabel,
   submittingLabel,
 }: CategoryFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<CategoryFormSchema>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: defaultValues || { name: "" },
+  });
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit((data, e) => onSubmit(data, e!))}>
       <div className="mb-6">
         <label htmlFor="name" className="block mb-2 font-medium">
           カテゴリー名
@@ -30,18 +41,14 @@ export default function CategoryForm({
         <input
           type="text"
           id="name"
-          name="name"
+          {...register("name")}
           className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.name}
-          onChange={onChange}
           disabled={isSubmitting}
-          required
         />
         {errors.name && (
-          <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+          <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
         )}
       </div>
-
       <div className="flex gap-4">
         <button
           type="submit"

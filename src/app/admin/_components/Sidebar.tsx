@@ -5,31 +5,30 @@ import { usePathname } from "next/navigation";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const isSelected = (href: string) => {
+    return pathname.includes(href);
+  };
 
   return (
-    <div className="w-[320px] bg-[#f3f4f6] border-r border-[#e5e7eb]">
-      <div>
+    <>
+      <aside className="fixed bg-gray-100 w-[280px] left-0 bottom-0 top-[72px]">
         <Link
-          href="/admin/posts/"
-          className={`block px-4 py-4 mb-2 text-base text-left rounded-none transition-all ${
-            pathname === "/admin/posts"
-              ? "bg-[#e4edfc] text-black font-bold"
-              : "text-black"
+          href="/admin/posts"
+          className={`p-4 block hover:bg-blue-100 ${
+            isSelected("/admin/posts") && "bg-blue-100"
           }`}
         >
           記事一覧
         </Link>
         <Link
-          href="/admin/categories/"
-          className={`block px-4 py-4 text-base text-left rounded-none transition-all ${
-            pathname === "/admin/categories"
-              ? "bg-[#e4edfc] text-black font-bold"
-              : "text-black"
+          href="/admin/categories"
+          className={`p-4 block hover:bg-blue-100 ${
+            isSelected("/admin/categories") && "bg-blue-100"
           }`}
         >
           カテゴリー一覧
         </Link>
-      </div>
-    </div>
+      </aside>
+    </>
   );
 }
