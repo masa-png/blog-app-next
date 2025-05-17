@@ -10,7 +10,6 @@ import React from "react";
 
 interface CategoryFormProps {
   defaultValues?: CategoryFormSchema;
-  isSubmitting: boolean;
   onSubmit: (data: CategoryFormSchema, e: React.BaseSyntheticEvent) => void;
   onDelete?: (e: React.FormEvent) => void;
   submitLabel: string;
@@ -19,7 +18,6 @@ interface CategoryFormProps {
 
 export default function CategoryForm({
   defaultValues,
-  isSubmitting,
   onSubmit,
   onDelete,
   submitLabel,
@@ -28,7 +26,7 @@ export default function CategoryForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<CategoryFormSchema>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: defaultValues || { name: "" },

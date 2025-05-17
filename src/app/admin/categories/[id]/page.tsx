@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import CategoryForm from "../_components/CategoryForm";
@@ -22,7 +21,6 @@ export default function Page() {
   const defaultValues = data?.category
     ? { name: data.category.name }
     : { name: "" };
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 更新処理（react-hook-formのonSubmit用）
   const handleUpdate = async (
@@ -30,7 +28,6 @@ export default function Page() {
     e: React.BaseSyntheticEvent
   ) => {
     e.preventDefault();
-    setIsSubmitting(true);
     try {
       const res = await api.put(`${endpoint}${categoryId}`, {
         name: formData.name,
@@ -47,8 +44,6 @@ export default function Page() {
       }
     } catch (error) {
       alert("更新に失敗しました。もう一度お試しください。");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -56,7 +51,6 @@ export default function Page() {
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("本当に削除しますか？")) return;
-    setIsSubmitting(true);
     try {
       const res = await api.delete(`${endpoint}${categoryId}`);
       if (res.ok) {
@@ -70,8 +64,6 @@ export default function Page() {
       }
     } catch (error) {
       alert("削除に失敗しました。もう一度お試しください。");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -87,7 +79,6 @@ export default function Page() {
       ) : (
         <CategoryForm
           defaultValues={defaultValues}
-          isSubmitting={isSubmitting}
           onSubmit={handleUpdate}
           onDelete={handleDelete}
           submitLabel="更新"

@@ -13,7 +13,6 @@ import { postFormSchema, PostFormSchema } from "../../../_lib/validation";
 
 interface PostFormProps {
   defaultValues?: PostFormSchema;
-  isSubmitting: boolean;
   onSubmit: (data: PostFormSchema, e: React.BaseSyntheticEvent) => void;
   onDelete?: (e: React.FormEvent) => void;
   submitLabel: string;
@@ -24,7 +23,6 @@ const fetchCategories = (url: string) => api.get(url);
 
 export default function PostForm({
   defaultValues,
-  isSubmitting,
   onSubmit,
   onDelete,
   submitLabel,
@@ -44,7 +42,7 @@ export default function PostForm({
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<PostFormSchema>({
     resolver: zodResolver(postFormSchema),
     defaultValues: defaultValues || {

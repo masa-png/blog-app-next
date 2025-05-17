@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import PostForm from "../_components/PostForm";
 import api from "@/app/_utils/api";
 import { useRouter } from "next/navigation";
@@ -13,7 +12,6 @@ interface FormData {
 }
 
 export default function Page() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const endpoint = "/api/admin/posts";
 
@@ -31,7 +29,6 @@ export default function Page() {
     e: React.BaseSyntheticEvent
   ) => {
     e.preventDefault();
-    setIsSubmitting(true);
     try {
       const res = await api.post(endpoint, {
         title: formData.title,
@@ -49,8 +46,6 @@ export default function Page() {
       }
     } catch (error) {
       alert("作成に失敗しました。もう一度お試しください。");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -59,7 +54,6 @@ export default function Page() {
       <h1 className="text-2xl font-bold mb-8">記事作成</h1>
       <PostForm
         defaultValues={defaultValues}
-        isSubmitting={isSubmitting}
         onSubmit={handleSubmit}
         submitLabel="作成"
         submittingLabel="作成中..."
