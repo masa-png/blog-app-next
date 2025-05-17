@@ -1,64 +1,21 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
-import { FormData, FormErrors } from "@/app/_types";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { contactSchema, ContactSchema } from "@/app/_lib/validation";
 
 export default function Form() {
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-    email: "",
-    message: "",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ContactSchema>({
+    resolver: zodResolver(contactSchema),
   });
 
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // 名前：入力必須 & 30文字以内
-    if (!formData.name.trim()) {
-      newErrors.name = "お名前は必須です。";
-    } else if (formData.name.length > 30) {
-      newErrors.name = "お名前は30文字以内で入力してください。";
-    }
-
-    // メールアドレス：入力必須 & メールアドレスの形式になっていること
-    if (!formData.email.trim()) {
-      newErrors.email = "メールアドレスは必須です。";
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = "有効なメールアドレスを入力してください。";
-      }
-    }
-
-    // 本文：入力必須 & 500字以内
-    if (!formData.message.trim()) {
-      newErrors.message = "本文は必須です。";
-    } else if (formData.message.length > 500) {
-      newErrors.message = "本文は500文字以内で入力してください。";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const isValid: boolean = validateForm();
-
-    if (!isValid) return;
-
-    // バリデーションに成功した場合 - APIでフォームを送信
+  const onSubmit = async (data: ContactSchema) => {
     try {
-      setIsSubmitting(true);
-
       const response = await fetch(
         "https://1hmfpsvto6.execute-api.ap-northeast-1.amazonaws.com/dev/contacts",
         {
@@ -66,16 +23,14 @@ export default function Form() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(data),
         }
       );
 
       if (response.ok) {
         alert("送信しました");
-        setFormData({ name: "", email: "", message: "" });
-        setErrors({});
+        reset();
       } else {
-        // エラーレスポンスの処理
         const errorData = await response.json().catch(() => null);
         const errorMessage = errorData?.message || `エラー: ${response.status}`;
         alert(`送信に失敗しました。${errorMessage}`);
@@ -83,13 +38,11 @@ export default function Form() {
     } catch (error) {
       console.error("送信エラー:", error);
       alert("送信に失敗しました。もう一度お試しください。");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <div className="flex justify-between items-center mb-6">
         <label htmlFor="name" className="w-60">
           お名前
@@ -98,14 +51,12 @@ export default function Form() {
           <input
             type="text"
             id="name"
-            name="name"
+            {...register("name")}
             className="border border-gray-300 rounded-lg p-4 w-full"
-            value={formData.name}
-            onChange={handleChange}
             disabled={isSubmitting}
           />
           {errors.name && (
-            <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+            <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
           )}
         </div>
       </div>
@@ -118,14 +69,12 @@ export default function Form() {
           <input
             type="email"
             id="email"
-            name="email"
+            {...register("email")}
             className="border border-gray-300 rounded-lg p-4 w-full"
-            value={formData.email}
-            onChange={handleChange}
             disabled={isSubmitting}
           />
           {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
           )}
         </div>
       </div>
@@ -137,15 +86,15 @@ export default function Form() {
         <div className="w-full">
           <textarea
             id="message"
-            name="message"
             rows={8}
+            {...register("message")}
             className="border border-gray-300 rounded-lg p-4 w-full h-60"
-            value={formData.message}
-            onChange={handleChange}
             disabled={isSubmitting}
           ></textarea>
           {errors.message && (
-            <p className="text-red-500 text-sm mt-1">{errors.message}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {errors.message.message}
+            </p>
           )}
         </div>
       </div>
@@ -159,11 +108,10 @@ export default function Form() {
           {isSubmitting ? "送信中..." : "送信"}
         </button>
         <button
-          type="reset"
+          type="button"
           className="bg-gray-200 font-bold py-2 px-4 rounded-lg cursor-pointer"
           onClick={() => {
-            setFormData({ name: "", email: "", message: "" });
-            setErrors({});
+            reset();
           }}
           disabled={isSubmitting}
         >

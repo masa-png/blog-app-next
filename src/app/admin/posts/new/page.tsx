@@ -2,58 +2,36 @@
 
 import { useState } from "react";
 import PostForm from "../_components/PostForm";
-import { validatePostForm } from "../../_components/validation";
 import api from "@/app/_utils/api";
+import { useRouter } from "next/navigation";
 
 interface FormData {
   title: string;
   content: string;
-  thumbnailImageKey: string;
+  thumbnailImageKey?: string;
   categories: number[];
 }
 
-interface FormErrors {
-  title?: string;
-  content?: string;
-  thumbnailImageKey?: string;
-  categories?: string;
-}
-
 export default function Page() {
-  const [formData, setFormData] = useState<FormData>({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const endpoint = "/api/admin/posts";
+
+  // react-hook-form用の初期値
+  const defaultValues: FormData = {
     title: "",
     content: "",
     thumbnailImageKey: "",
     categories: [],
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const endpoint = "/api/admin/posts";
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = Array.from(e.target.selectedOptions, (option) =>
-      Number(option.value)
-    );
-    setFormData({ ...formData, categories: selected });
   };
 
-  const validateForm = (): boolean => {
-    const newErrors = validatePostForm(formData);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // react-hook-formのonSubmit用
+  const handleSubmit = async (
+    formData: FormData,
+    e: React.BaseSyntheticEvent
+  ) => {
     e.preventDefault();
-
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
-
     try {
       const res = await api.post(endpoint, {
         title: formData.title,
@@ -63,13 +41,7 @@ export default function Page() {
       });
       if (res.ok) {
         alert("記事を作成しました");
-        setFormData({
-          title: "",
-          content: "",
-          thumbnailImageKey: "",
-          categories: [],
-        });
-        setErrors({});
+        router.push("/admin/posts");
       } else {
         const errorData = await res.json().catch(() => null);
         const errorMessage = errorData?.message || `エラー: ${res.status}`;
@@ -86,11 +58,8 @@ export default function Page() {
     <div className="p-7">
       <h1 className="text-2xl font-bold mb-8">記事作成</h1>
       <PostForm
-        formData={formData}
-        errors={errors}
+        defaultValues={defaultValues}
         isSubmitting={isSubmitting}
-        onChange={handleChange}
-        onCategoryChange={handleCategoryChange}
         onSubmit={handleSubmit}
         submitLabel="作成"
         submittingLabel="作成中..."

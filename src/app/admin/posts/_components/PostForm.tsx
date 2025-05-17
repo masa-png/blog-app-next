@@ -3,32 +3,18 @@
 import api from "@/app/_utils/api";
 import { supabase } from "@/utils/supabase";
 import Image from "next/image";
-import React, { ChangeEvent, useEffect, useState } from "react";
-import { v4 as uuidv4 } from "uuid"; // 固有IDを生成するライブラリ
+import React, { useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import useSWR from "swr";
 import { Category } from "@/app/_types/post";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { postFormSchema, PostFormSchema } from "../../../_lib/validation";
 
 interface PostFormProps {
-  formData: {
-    title: string;
-    content: string;
-    thumbnailImageKey?: string;
-    categories: number[];
-  };
-
-  errors: {
-    title?: string;
-    content?: string;
-    thumbnailImageKey?: string;
-    categories?: string;
-  };
-
+  defaultValues?: PostFormSchema;
   isSubmitting: boolean;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => void;
-  onCategoryChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (data: PostFormSchema, e: React.BaseSyntheticEvent) => void;
   onDelete?: (e: React.FormEvent) => void;
   submitLabel: string;
   submittingLabel: string;
@@ -37,59 +23,63 @@ interface PostFormProps {
 const fetchCategories = (url: string) => api.get(url);
 
 export default function PostForm({
-  formData,
-  errors,
+  defaultValues,
   isSubmitting,
-  onChange,
-  onCategoryChange,
   onSubmit,
   onDelete,
   submitLabel,
   submittingLabel,
 }: PostFormProps) {
   const endpoint = "/api/admin/categories";
-
-  // SWRを使用してカテゴリー一覧を取得
   const { data: categoriesData, isLoading: loadingCategories } = useSWR(
     endpoint,
     fetchCategories
   );
-
-  // カテゴリー一覧
   const categories: Category[] = categoriesData?.categories || [];
 
-  // サムネイルURLのstate
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
-  // formDataの変更を監視して画像URLを取得
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<PostFormSchema>({
+    resolver: zodResolver(postFormSchema),
+    defaultValues: defaultValues || {
+      title: "",
+      content: "",
+      thumbnailImageKey: "",
+      categories: [],
+    },
+  });
+
+  // サムネイル画像のURL取得
+  const thumbnailImageKey = watch("thumbnailImageKey");
   useEffect(() => {
-    if (!formData.thumbnailImageKey) {
+    if (!thumbnailImageKey) {
       setThumbnailUrl(null);
       return;
     }
-
     const fetchImageUrl = async () => {
       const { data } = await supabase.storage
         .from("post-thumbnail")
-        .getPublicUrl(formData.thumbnailImageKey || "");
-
+        .getPublicUrl(thumbnailImageKey || "");
       setThumbnailUrl(data.publicUrl);
     };
-
     fetchImageUrl();
-  }, [formData.thumbnailImageKey]);
+  }, [thumbnailImageKey]);
 
-  // 画像のアップロード
+  // 画像アップロード
   const handleImageChange = async (
-    event: ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>
   ): Promise<void> => {
     if (!event.target.files || event.target.files.length === 0) {
       return;
     }
-
     const file = event.target.files[0];
     const filePath = `private/${uuidv4()}`;
-
     try {
       const { data, error } = await supabase.storage
         .from("post-thumbnail")
@@ -97,29 +87,27 @@ export default function PostForm({
           cacheControl: "3600",
           upsert: false,
         });
-
       if (error) {
         alert(`画像のアップロードに失敗しました: ${error.message}`);
         return;
       }
-
-      // アップロードが成功したら親コンポーネントに通知
-      const syntheticEvent = {
-        target: {
-          name: "thumbnailImageKey",
-          value: data.path,
-        },
-      } as React.ChangeEvent<HTMLInputElement>;
-
-      onChange(syntheticEvent);
+      setValue("thumbnailImageKey", data.path, { shouldValidate: true });
     } catch (error) {
       alert("画像のアップロード中にエラーが発生しました。");
       console.error(error);
     }
   };
 
+  // カテゴリー選択
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = Array.from(e.target.selectedOptions, (option) =>
+      Number(option.value)
+    );
+    setValue("categories", selected, { shouldValidate: true });
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit((data, e) => onSubmit(data, e!))}>
       <div className="mb-6">
         <label htmlFor="title" className="block mb-2 font-medium">
           タイトル
@@ -127,15 +115,12 @@ export default function PostForm({
         <input
           type="text"
           id="title"
-          name="title"
+          {...register("title")}
           className="border border-gray-300 rounded-lg p-4 w-full"
-          value={formData.title}
-          onChange={onChange}
           disabled={isSubmitting}
-          required
         />
         {errors.title && (
-          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+          <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
         )}
       </div>
       <div className="mb-6">
@@ -144,16 +129,13 @@ export default function PostForm({
         </label>
         <textarea
           id="content"
-          name="content"
           rows={8}
+          {...register("content")}
           className="border border-gray-300 rounded-lg p-4 w-full h-60"
-          value={formData.content}
-          onChange={onChange}
           disabled={isSubmitting}
-          required
         ></textarea>
         {errors.content && (
-          <p className="text-red-500 text-sm mt-1">{errors.content}</p>
+          <p className="text-red-500 text-sm mt-1">{errors.content.message}</p>
         )}
       </div>
       <div className="mb-6">
@@ -189,12 +171,10 @@ export default function PostForm({
         ) : (
           <select
             id="category"
-            name="categories"
             className="border border-gray-300 rounded-lg p-4 w-full"
-            value={formData.categories.map(String)}
-            onChange={onCategoryChange}
+            value={watch("categories").map(String)}
+            onChange={handleCategoryChange}
             disabled={isSubmitting}
-            required
             multiple
             size={Math.min(categories.length || 1, 5)}
           >
@@ -206,7 +186,9 @@ export default function PostForm({
           </select>
         )}
         {errors.categories && (
-          <p className="text-red-500 text-sm mt-1">{errors.categories}</p>
+          <p className="text-red-500 text-sm mt-1">
+            {errors.categories.message}
+          </p>
         )}
       </div>
       <div className="mt-6 flex gap-4">

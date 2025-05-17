@@ -1,19 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import CategoryForm from "../_components/CategoryForm";
-import { validateCategoryForm } from "../../_components/validation";
 import api from "@/app/_utils/api";
-
-interface FormData {
-  name: string;
-}
-
-interface FormErrors {
-  name?: string;
-}
 
 const fetcherCategory = (url: string) => api.get(url);
 
@@ -24,52 +15,29 @@ export default function Page() {
   const endpoint = "/api/admin/categories/";
   const categoryUrl = categoryId ? `${endpoint}${categoryId}` : null;
 
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formInitialized, setFormInitialized] = useState(false);
-
   // SWRを使用してカテゴリーデータを取得
   const { data, error, isLoading } = useSWR(categoryUrl, fetcherCategory);
 
-  // データが利用可能になったらフォームデータを設定
-  useEffect(() => {
-    if (data?.category && !formInitialized) {
-      setFormData({
-        name: data.category.name,
-      });
-      setFormInitialized(true);
-    }
-  }, [data, formInitialized]);
+  // フォーム初期値
+  const defaultValues = data?.category
+    ? { name: data.category.name }
+    : { name: "" };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const validateForm = (): boolean => {
-    const newErrors = validateCategoryForm(formData);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
+  // 更新処理（react-hook-formのonSubmit用）
+  const handleUpdate = async (
+    formData: { name: string },
+    e: React.BaseSyntheticEvent
+  ) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
-
     try {
       const res = await api.put(`${endpoint}${categoryId}`, {
         name: formData.name,
       });
-
       if (res.ok) {
-        // カテゴリー一覧のキャッシュを更新
         mutate(endpoint);
-        // 現在のカテゴリーのキャッシュを更新
         mutate(categoryUrl);
-
         alert("カテゴリーを更新しました");
         router.push("/admin/categories");
       } else {
@@ -84,18 +52,15 @@ export default function Page() {
     }
   };
 
+  // 削除処理
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!window.confirm("本当に削除しますか？")) return;
-
     setIsSubmitting(true);
     try {
       const res = await api.delete(`${endpoint}${categoryId}`);
       if (res.ok) {
-        // カテゴリー一覧のキャッシュを更新
         mutate(endpoint);
-
         alert("カテゴリーを削除しました");
         router.push("/admin/categories");
       } else {
@@ -121,10 +86,8 @@ export default function Page() {
         <div>読み込み中...</div>
       ) : (
         <CategoryForm
-          formData={formData}
-          errors={errors}
+          defaultValues={defaultValues}
           isSubmitting={isSubmitting}
-          onChange={handleChange}
           onSubmit={handleUpdate}
           onDelete={handleDelete}
           submitLabel="更新"

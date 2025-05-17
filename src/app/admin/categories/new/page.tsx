@@ -2,51 +2,27 @@
 
 import { useState } from "react";
 import CategoryForm from "../_components/CategoryForm";
-import { validateCategoryForm } from "../../_components/validation";
 import api from "@/app/_utils/api";
-
-interface FormData {
-  name: string;
-}
-
-interface FormErrors {
-  name?: string;
-}
+import { useRouter } from "next/navigation";
 
 export default function Page() {
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const defaultValues = { name: "" };
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
   const endpoint = "/api/admin/categories";
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const validateForm = (): boolean => {
-    const newErrors = validateCategoryForm(formData);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // react-hook-formのonSubmit用
+  const handleSubmit = async (
+    formData: { name: string },
+    e: React.BaseSyntheticEvent
+  ) => {
     e.preventDefault();
-
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
-
     try {
-      const res = await api.post(endpoint, {
-        name: formData.name,
-      });
+      const res = await api.post(endpoint, { name: formData.name });
       if (res.ok) {
         alert("カテゴリーを新規作成しました");
-        setFormData({
-          name: "",
-        });
-        setErrors({});
+        router.push("/admin/categories");
       } else {
         const errorData = await res.json().catch(() => null);
         const errorMessage = errorData?.message || `エラー: ${res.status}`;
@@ -63,10 +39,8 @@ export default function Page() {
     <div className="p-7">
       <h1 className="text-2xl font-bold mb-8">カテゴリー作成</h1>
       <CategoryForm
-        formData={formData}
-        errors={errors}
+        defaultValues={defaultValues}
         isSubmitting={isSubmitting}
-        onChange={handleChange}
         onSubmit={handleSubmit}
         submitLabel="作成"
         submittingLabel="作成中..."
